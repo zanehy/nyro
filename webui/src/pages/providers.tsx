@@ -39,6 +39,7 @@ import { NyroIcon } from "@/components/ui/nyro-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -389,6 +390,7 @@ export default function ProvidersPage() {
   const [testTarget, setTestTarget] = useState<Provider | null>(null);
   const [providerToDelete, setProviderToDelete] = useState<Provider | null>(null);
   const [providerToCopy, setProviderToCopy] = useState<Provider | null>(null);
+  const [appendTargets, setAppendTargets] = useState(false);
   const [selectedPresetId, setSelectedPresetId] = useState(DEFAULT_PRESET_ID);
   const [showCreateApiKey, setShowCreateApiKey] = useState(true);
   const [showEditApiKey, setShowEditApiKey] = useState(false);
@@ -555,9 +557,11 @@ export default function ProvidersPage() {
   });
 
   const copyMut = useMutation({
-    mutationFn: (id: string) => backend<Provider>("copy_provider", { id }),
+    mutationFn: ({ id, appendTargets }: { id: string; appendTargets: boolean }) =>
+      backend<Provider>("copy_provider", { id, options: { append_targets: appendTargets } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["providers"] });
+      qc.invalidateQueries({ queryKey: ["routes"] });
     },
     onError: (error: unknown) => {
       showErrorDialog("复制提供商失败", "Failed to copy provider", error);
@@ -2401,7 +2405,10 @@ export default function ProvidersPage() {
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
-                      onClick={() => setProviderToCopy(p)}
+                      onClick={() => {
+                        setAppendTargets(false);
+                        setProviderToCopy(p);
+                      }}
                       disabled={copyMut.isPending}
                       title={isZh ? "复制" : "Copy"}
                       className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-500 cursor-pointer disabled:opacity-50"
@@ -2523,23 +2530,50 @@ export default function ProvidersPage() {
       <ConfirmDialog
         open={Boolean(providerToCopy)}
         onOpenChange={(open) => {
-          if (!open && !copyMut.isPending) setProviderToCopy(null);
+          if (!open && !copyMut.isPending) {
+            setProviderToCopy(null);
+            setAppendTargets(false);
+          }
         }}
         title={isZh ? "确认复制提供商" : "Confirm provider copy"}
         description={
           providerToCopy
             ? (isZh
-              ? `确认复制「${providerToCopy.name}」吗？新提供商名称将为「${nextProviderCopyName(providers, providerToCopy.name)}」。`
-              : `Copy "${providerToCopy.name}"? The new provider name will be "${nextProviderCopyName(providers, providerToCopy.name)}".`)
+              ? `复制「${providerToCopy.name}」为「${nextProviderCopyName(providers, providerToCopy.name)}」，新提供商默认禁用。`
+              : `Copy "${providerToCopy.name}" as "${nextProviderCopyName(providers, providerToCopy.name)}" (disabled by default).`)
             : undefined
+        }
+        content={
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+            <Checkbox
+              checked={appendTargets}
+              onCheckedChange={(checked) => setAppendTargets(checked === true)}
+              disabled={copyMut.isPending}
+              aria-label={isZh ? "追加路由目标" : "Append route targets"}
+              className="mt-0.5"
+            />
+            <span className="space-y-1">
+              <span className="block font-medium text-slate-800">
+                {isZh ? "追加路由目标" : "Append route targets"}
+              </span>
+              <span className="block text-xs text-slate-500">
+                {isZh
+                  ? "在引用该提供商的现有路由中追加指向新提供商的目标。"
+                  : "Append targets pointing to the new provider in existing routes that reference this provider."}
+              </span>
+            </span>
+          </label>
         }
         cancelText={isZh ? "取消" : "Cancel"}
         confirmText={copyMut.isPending ? (isZh ? "复制中..." : "Copying...") : (isZh ? "确认复制" : "Copy")}
         confirmClassName="bg-slate-900 text-white hover:bg-slate-800"
         onConfirm={() => {
           if (!providerToCopy || copyMut.isPending) return;
-          copyMut.mutate(providerToCopy.id, {
-            onSuccess: () => setProviderToCopy(null),
+          copyMut.mutate({ id: providerToCopy.id, appendTargets }, {
+            onSuccess: () => {
+              setProviderToCopy(null);
+              setAppendTargets(false);
+            },
           });
         }}
       />
