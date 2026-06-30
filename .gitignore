@@ -20,6 +20,16 @@ src-tauri/icons/ios/
 *.db-shm
 *.patch
 
+# Go (nyro/go) — runtime data, build output, local working docs
+go/data/
+go/bin/
+go/docs/superpowers/
+# Go build/test artifacts (consolidated from go/.gitignore)
+*.exe
+*.test
+*.out
+go.work.sum
+
 # OS
 .DS_Store
 Thumbs.db
