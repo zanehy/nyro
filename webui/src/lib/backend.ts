@@ -48,7 +48,12 @@ async function invokeHTTP<T>(cmd: string, args?: Record<string, unknown>): Promi
   }
   // Use explicit key check instead of ??, so that { "data": null } correctly
   // returns null rather than falling back to the full response object.
-  return json && typeof json === "object" && "data" in json ? json.data : json;
+  const result = json && typeof json === "object" && "data" in json ? json.data : json;
+  // get_setting returns { key, value } — unwrap to value so callers receive string | null.
+  if (cmd === "get_setting" && result && typeof result === "object" && "value" in result) {
+    return (result as { value: string | null }).value as T;
+  }
+  return result;
 }
 
 interface HTTPMapping {
