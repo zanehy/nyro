@@ -51,11 +51,17 @@ func (RouteUpstream) TableName() string { return "route_upstreams" }
 
 // Consumer is a downstream caller identity.
 type Consumer struct {
-	ID        string `gorm:"column:id;primaryKey"`
-	Name      string `gorm:"column:name;uniqueIndex;not null"`
-	Enabled   bool   `gorm:"column:enabled;not null;default:true"`
-	CreatedAt string `gorm:"column:created_at;not null"`
-	UpdatedAt string `gorm:"column:updated_at;not null"`
+	ID                  string `gorm:"column:id;primaryKey"`
+	Name                string `gorm:"column:name;uniqueIndex;not null"`
+	Enabled             bool   `gorm:"column:enabled;not null;default:true"`
+	MetadataJSON        string `gorm:"column:metadata_json"`
+	ProtocolsJSON       string `gorm:"column:protocols_json"`
+	IPAllowlistJSON     string `gorm:"column:ip_allowlist_json"`
+	MaxInputTokens      int64  `gorm:"column:max_input_tokens"`
+	MaxOutputTokens     int64  `gorm:"column:max_output_tokens"`
+	MaxRequestBodyBytes int64  `gorm:"column:max_request_body_bytes"`
+	CreatedAt           string `gorm:"column:created_at;not null"`
+	UpdatedAt           string `gorm:"column:updated_at;not null"`
 }
 
 func (Consumer) TableName() string { return "consumers" }
@@ -65,7 +71,7 @@ type ConsumerKey struct {
 	ID         string `gorm:"column:id;primaryKey"`
 	ConsumerID string `gorm:"column:consumer_id;not null;uniqueIndex:idx_consumer_key_name"`
 	Name       string `gorm:"column:name;not null;uniqueIndex:idx_consumer_key_name"`
-	KeyPrefix  string `gorm:"column:key_prefix;not null;index"`
+	KeyPreview string `gorm:"column:key_preview;not null;index"`
 	KeyHash    string `gorm:"column:key_hash;not null"`
 	Enabled    bool   `gorm:"column:enabled;not null;default:true"`
 	ExpiresAt  string `gorm:"column:expires_at"`
@@ -91,6 +97,7 @@ type ConsumerQuota struct {
 	QuotaType  string `gorm:"column:quota_type;not null"`
 	QuotaLimit int64  `gorm:"column:quota_limit;not null"`
 	Window     string `gorm:"column:window"`
+	Currency   string `gorm:"column:currency"`
 	CreatedAt  string `gorm:"column:created_at;not null"`
 	UpdatedAt  string `gorm:"column:updated_at;not null"`
 }

@@ -108,11 +108,19 @@ func (s consumerStore) Create(in storage.CreateConsumer) (storage.Consumer, erro
 		enabled = *in.Enabled
 	}
 	c := &model.Consumer{
-		ID:        newID(),
-		Name:      in.Name,
-		Enabled:   enabled,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:              newID(),
+		Name:            in.Name,
+		Enabled:         enabled,
+		MetadataJSON:    stringMapToJSON(in.Metadata),
+		ProtocolsJSON:   stringSliceToJSON(in.Protocols),
+		IPAllowlistJSON: stringSliceToJSON(in.IPAllowlist),
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
+	if in.Limits != nil {
+		c.MaxInputTokens = in.Limits.MaxInputTokens
+		c.MaxOutputTokens = in.Limits.MaxOutputTokens
+		c.MaxRequestBodyBytes = in.Limits.MaxRequestBodyBytes
 	}
 	var out storage.Consumer
 	err := s.q.Transaction(func(tx *query.Query) error {
@@ -168,15 +176,15 @@ func (s consumerStore) Create(in storage.CreateConsumer) (storage.Consumer, erro
 func createConsumerKey(ctx context.Context, tx *query.Query, consumerID string, in storage.CreateConsumerKey) (storage.ConsumerKey, error) {
 	now := nowISO()
 	raw := in.Token
-	var prefix, hash string
+	var preview, hash string
 	if raw == "" {
 		var err error
-		raw, prefix, hash, err = storage.GenerateKey()
+		raw, preview, hash, err = storage.GenerateKey()
 		if err != nil {
 			return storage.ConsumerKey{}, err
 		}
 	} else {
-		prefix = storage.PrefixOf(raw)
+		preview = storage.PreviewOf(raw)
 		hash = storage.HashKey(raw)
 	}
 	enabled := true
@@ -187,7 +195,7 @@ func createConsumerKey(ctx context.Context, tx *query.Query, consumerID string, 
 		ID:         newID(),
 		ConsumerID: consumerID,
 		Name:       in.Name,
-		KeyPrefix:  prefix,
+		KeyPreview: preview,
 		KeyHash:    hash,
 		Enabled:    enabled,
 		ExpiresAt:  in.ExpiresAt,
@@ -238,6 +246,7 @@ func insertConsumerQuotas(ctx context.Context, tx *query.Query, consumerID strin
 			QuotaType:  qin.QuotaType,
 			QuotaLimit: qin.QuotaLimit,
 			Window:     qin.Window,
+			Currency:   qin.Currency,
 			CreatedAt:  now,
 			UpdatedAt:  now,
 		}
@@ -302,6 +311,22 @@ func (s consumerStore) Update(id string, in storage.UpdateConsumer) (storage.Con
 		}
 		if in.Enabled != nil {
 			assigns = append(assigns, tx.Consumer.Enabled.Value(*in.Enabled))
+		}
+		if in.Metadata != nil {
+			assigns = append(assigns, tx.Consumer.MetadataJSON.Value(stringMapToJSON(*in.Metadata)))
+		}
+		if in.Protocols != nil {
+			assigns = append(assigns, tx.Consumer.ProtocolsJSON.Value(stringSliceToJSON(*in.Protocols)))
+		}
+		if in.IPAllowlist != nil {
+			assigns = append(assigns, tx.Consumer.IPAllowlistJSON.Value(stringSliceToJSON(*in.IPAllowlist)))
+		}
+		if in.Limits != nil {
+			assigns = append(assigns,
+				tx.Consumer.MaxInputTokens.Value(in.Limits.MaxInputTokens),
+				tx.Consumer.MaxOutputTokens.Value(in.Limits.MaxOutputTokens),
+				tx.Consumer.MaxRequestBodyBytes.Value(in.Limits.MaxRequestBodyBytes),
+			)
 		}
 		if _, err := tx.Consumer.WithContext(ctx).Where(tx.Consumer.ID.Eq(id)).UpdateSimple(assigns...); err != nil {
 			return err

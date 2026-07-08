@@ -45,15 +45,15 @@ func (b *Backend) consumerWithDetails(c storage.Consumer) storage.Consumer {
 func (b *Backend) createConsumerKey(consumerID string, in storage.CreateConsumerKey) (storage.ConsumerKey, error) {
 	now := nowISO()
 	raw := in.Token
-	var prefix, hash string
+	var preview, hash string
 	if raw == "" {
 		var err error
-		raw, prefix, hash, err = storage.GenerateKey()
+		raw, preview, hash, err = storage.GenerateKey()
 		if err != nil {
 			return storage.ConsumerKey{}, err
 		}
 	} else {
-		prefix = storage.PrefixOf(raw)
+		preview = storage.PreviewOf(raw)
 		hash = storage.HashKey(raw)
 	}
 	enabled := true
@@ -61,7 +61,7 @@ func (b *Backend) createConsumerKey(consumerID string, in storage.CreateConsumer
 		enabled = *in.Enabled
 	}
 	k := storage.ConsumerKey{
-		ID: newID(), ConsumerID: consumerID, Name: in.Name, KeyPrefix: prefix, KeyHash: hash,
+		ID: newID(), ConsumerID: consumerID, Name: in.Name, KeyPreview: preview, KeyHash: hash,
 		Enabled: enabled, ExpiresAt: in.ExpiresAt, CreatedAt: now, UpdatedAt: now,
 	}
 	b.consumerKeys[k.ID] = k
@@ -111,7 +111,11 @@ func (s consumerStore) Create(in storage.CreateConsumer) (storage.Consumer, erro
 	if in.Enabled != nil {
 		enabled = *in.Enabled
 	}
-	c := storage.Consumer{ID: newID(), Name: in.Name, Enabled: enabled, CreatedAt: now, UpdatedAt: now}
+	c := storage.Consumer{
+		ID: newID(), Name: in.Name, Enabled: enabled,
+		Metadata: in.Metadata, Protocols: in.Protocols, IPAllowlist: in.IPAllowlist, Limits: in.Limits,
+		CreatedAt: now, UpdatedAt: now,
+	}
 	s.b.consumers[c.ID] = c
 
 	// Collect the created keys directly (with their one-time raw Token);
@@ -177,7 +181,7 @@ func (b *Backend) insertConsumerQuotas(consumerID string, quotas []storage.Creat
 	for _, qin := range quotas {
 		cq := storage.ConsumerQuota{
 			ID: newID(), ConsumerID: consumerID, QuotaType: qin.QuotaType,
-			QuotaLimit: qin.QuotaLimit, Window: qin.Window,
+			QuotaLimit: qin.QuotaLimit, Window: qin.Window, Currency: qin.Currency,
 		}
 		b.consumerQuotas[cq.ID] = cq
 	}
@@ -250,6 +254,18 @@ func (s consumerStore) Update(id string, in storage.UpdateConsumer) (storage.Con
 	}
 	if in.Enabled != nil {
 		c.Enabled = *in.Enabled
+	}
+	if in.Metadata != nil {
+		c.Metadata = *in.Metadata
+	}
+	if in.Protocols != nil {
+		c.Protocols = *in.Protocols
+	}
+	if in.IPAllowlist != nil {
+		c.IPAllowlist = *in.IPAllowlist
+	}
+	if in.Limits != nil {
+		c.Limits = in.Limits
 	}
 	c.UpdatedAt = nowISO()
 	s.b.consumers[id] = c
