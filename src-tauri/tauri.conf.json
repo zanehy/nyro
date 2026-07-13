@@ -1,13 +1,13 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicegui-org/nicegui/main/nicegui/static/tauri/tauri.conf.json",
   "productName": "Nyro",
-  "version": "1.8.2",
+  "version": "1.8.3",
   "identifier": "com.nyro.ai-gateway",
   "build": {
     "frontendDist": "../webui/dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "cd ../webui && pnpm dev",
-    "beforeBuildCommand": "cd ../webui && pnpm build"
+    "beforeDevCommand": "pnpm -C ../webui dev",
+    "beforeBuildCommand": "pnpm -C ../webui build"
   },
   "app": {
     "withGlobalTauri": true,
