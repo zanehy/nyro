@@ -248,15 +248,19 @@ function TargetRow({
 
         {providerHasModelDiscovery ? (
           <Combobox
+            allowCustom
             value={target.model}
             className="bg-white"
             options={withCurrentModel(targetModels, target.model).map((model) => ({
               value: model,
               label: model,
             }))}
-            placeholder={isZh ? "选择目标模型 ID" : "Select target model ID"}
-            searchPlaceholder={isZh ? "搜索模型..." : "Search model..."}
-            emptyText={isZh ? "暂无可用模型" : "No models available"}
+            placeholder={isZh ? "选择或输入目标模型 ID" : "Select or type target model ID"}
+            searchPlaceholder={isZh ? "搜索或输入模型..." : "Search or type model..."}
+            emptyText={isZh ? "暂无可用模型，可直接输入" : "No models available, type to use custom"}
+            formatCustomOption={(query) =>
+              isZh ? `使用 "${query}"` : `Use "${query}"`
+            }
             onValueChange={(value) => {
               onUpdate(index, { model: value });
               setCapsQueryModel(value.trim());
